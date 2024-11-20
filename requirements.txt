@@ -1,0 +1,4 @@
+deepface==0.0.93
+moviepy==1.0.3
+scenedetect==0.6.4
+tf-keras==2.17.0

@@ -19,13 +19,12 @@ def ensure_temp_directory(temp_folder="temp_scenes"):
 
 
 
-def detect_scenes(video_path):
+def detect_scenes(video_path, threshold=30):
+    """Detects initial scenes using the specified threshold."""
     # Create a video manager object
     video_manager = VideoManager([video_path])
-    
-    # Create a scene manager and add a content detector (default threshold = 30)
     scene_manager = SceneManager()
-    scene_manager.add_detector(ContentDetector(threshold=55))
+    scene_manager.add_detector(ContentDetector(threshold=threshold))
 
     # Start the video manager
     video_manager.start()
@@ -33,19 +32,48 @@ def detect_scenes(video_path):
     # Detect scenes
     scene_manager.detect_scenes(video_manager)
 
-    # Get scene list
+    # Get detected scenes
     scene_list = scene_manager.get_scene_list()
 
-    # Print out scene start and end times
-    print(f"Detected {len(scene_list)} scenes.")
-    for i, scene in enumerate(scene_list):
-        print(f"Scene {i+1}: Start {scene[0].get_timecode()}, End {scene[1].get_timecode()}")
+    print(f"Initial detection found {len(scene_list)} scenes.")
+    return scene_list
+
+
+def refine_scenes(video_path, scene_list, max_scene_length=60, threshold_step=5, min_threshold=15):
+    """Refines scene list, splitting any scene over max_scene_length recursively."""
+    refined_scenes = []
+    for scene in scene_list:
+        start_time = scene[0].get_seconds()
+        end_time = scene[1].get_seconds()
+        duration = end_time - start_time
+
+        if duration > max_scene_length:
+            # Refine scene by re-detecting with a stricter threshold
+            print(f"Refining scene: Start {scene[0].get_timecode()}, End {scene[1].get_timecode()}, Duration: {duration:.2f} seconds.")
+            
+            # Extract the portion of the video corresponding to this scene
+            temp_scene_path = "temp_scene.mp4"
+            VideoFileClip(video_path).subclip(start_time, end_time).write_videofile(temp_scene_path, codec="libx264")
+
+            # Run detection on the smaller scene with an adjusted threshold
+            new_threshold = max(min_threshold, threshold_step)
+            new_scene_list = detect_scenes(temp_scene_path, threshold=new_threshold)
+
+            # Recur to ensure all sub-scenes are under the max length
+            refined_scenes.extend(refine_scenes(temp_scene_path, new_scene_list, max_scene_length))
+            
+            # Clean up temporary files
+            os.remove(temp_scene_path)
+        else:
+            refined_scenes.append(scene)
+    
+    return refined_scenes
     
     # Return scene list for further processing
     return scene_list
 
 
-def cut_scenes(video_path, scene_list):
+def process_scenes(video_path, scene_list):
     """Cut scenes from the video based on the detected scene list."""
     clip = VideoFileClip(video_path)
     scene_scores = []
@@ -55,26 +83,29 @@ def cut_scenes(video_path, scene_list):
         start_time = scene[0].get_seconds()
         end_time = scene[1].get_seconds()
         scene_clip = clip.subclip(start_time, end_time)
-
+        length = end_time - start_time
         # Analyze emotion for the scene
-        scene_score = analyze_emotion_for_scene(scene_clip)
+        if length >= 20:
+            scene_score = score_scene(scene_clip)
 
-        scene_scores.append((scene_clip, scene_score))
+            scene_scores.append((scene_clip, scene_score))
 
-        print(f"Scene {idx+1} score: {scene_score}")
+            print(f"Scene {idx+1} score: {scene_score} length: { (length)}")
 
     return scene_scores
 
 
-def analyze_emotion_for_scene(scene_clip):
-    emotions = []
+dr_house_image = cv2.imread("drhouse.jpg")
+dr_house_face = DeepFace.extract_faces(dr_house_image, detector_backend='opencv')  # Detect the face in the reference image
 
-    # Analyze one frame per second (you can adjust fps)
+def score_scene(scene_clip):
+    emotions = []
+    dr_house_score = 0  
     for frame in scene_clip.iter_frames(fps=1):
         try:
             # Analyze emotions in the frame
             result = DeepFace.analyze(frame, actions=['emotion'])
-            
+
             # Check if the result is a list (which seems to be the case)
             if isinstance(result, list):
                 result = result[0]  # Access the first dictionary from the list
@@ -82,18 +113,33 @@ def analyze_emotion_for_scene(scene_clip):
             # Extract the dominant emotion
             emotion = result['dominant_emotion']
             emotions.append(emotion)
-            print(f"Detected emotion: {emotion}")
+            
+            # Detect faces in the frame
+            detected_faces = DeepFace.extract_faces(frame, detector_backend='opencv')
+            try:
+                #  Check if Dr. House's face is detected in the frame
+                match = DeepFace.verify(frame, "drhouse.jpg" )
+                
+                if match['verified']:
+                    print("Dr. House detected in this scene!")
+                    dr_house_score += 5  # Increase score for Dr. House presence
 
+
+            except Exception as z:
+                print(f"House face detection messed up :{frame, str(z)}")
         except Exception as e:
-            # If no face is detected or there's an error, print a warning and skip the frame
-            print(f"Warning: No face detected in frame. Skipping... {str(e)}")
+            pass
+            
 
-    # Score the scene based on detected emotions
+    # Calculate the scene's total emotional score
     emotional_intensity = {
-        'happy': 1, 'sad': 3, 'neutral': 1, 'angry': 3, 'fear': 3, 'surprise': 2, 'disgust': 2, 'contempt': 2, 'Dr. House': 8, 'Hugh Laurie': 10
+        'happy': 1, 'sad': 3, 'neutral': 1, 'angry': 3, 'fear': 3, 'surprise': 2, 'disgust': 2, 'contempt': 2, 
     }
     emotion_score = sum(emotional_intensity.get(e, 0) for e in emotions)
-    return emotion_score
+
+    # Add the Dr. House score to the total
+    total_score = emotion_score + dr_house_score
+    return total_score
 
 
 
@@ -101,6 +147,8 @@ def analyze_emotion_for_scene(scene_clip):
 def save_top_scenes(top_scenes, episode_output_dir):
     """Save the top N scenes to the episode's output folder."""
     # Ensure the directory exists (already created by create_episode_output_directory)
+    if os.path.exists(episode_output_dir):
+        shutil.rmtree(episode_output_dir)
     if not os.path.exists(episode_output_dir):
         os.makedirs(episode_output_dir)
     
@@ -165,36 +213,30 @@ def create_episode_output_directory(video_path):
 
 
 
-# Process each video file in the folder
 for filename in os.listdir(video_folder):
-    if filename.endswith(".mkv") :  # Add any other video formats you want to process
+    if filename.endswith(".mkv"):  # Add any other video formats you want to process
         video_path = os.path.join(video_folder, filename)
         print(f"Processing video: {video_path}")
 
+        # Ensure necessary directories exist
         ensure_temp_directory()
         episode_output_dir = create_episode_output_directory(video_path)
-        # Detect scenes
-        scene_list = detect_scenes(video_path)
 
-        # Cut scenes into clips
-        #scene_clips = cut_scenes(video_path, scene_list)
+        # Detect initial scenes
+        initial_scenes = detect_scenes(video_path, threshold=55)  # First pass
 
-        # Apply dynamic cropping to each scene
-        #cropped_clips = [clip.fl(dynamic_crop) for clip in scene_list]
+        # Refine scenes to ensure all are under the max length
+        final_scenes = refine_scenes(video_path, initial_scenes, max_scene_length=60)
 
-        # Concatenate all cropped clips into one video
-        #cropped_clip = concatenate_videoclips(cropped_clips)
-
-        # Save the final cropped video
-        #output_video_path = os.path.join(video_folder, f"{os.path.splitext(filename)[0]}_cropped.mp4")
-        #cropped_clip.write_videofile(output_video_path, codec="libx264")
-
-        scene_scores = cut_scenes(video_path, scene_list)
+        # Cut scenes into clips and score them
+        scene_scores = process_scenes(video_path, final_scenes)
 
         # Sort the scenes based on their emotional score in descending order
         top_scenes = sorted(scene_scores, key=lambda x: x[1], reverse=True)[:5]
 
         # Save the top 5 scenes
         save_top_scenes(top_scenes, episode_output_dir)
+
+
 
 print("Processing complete.")   

@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 import shutil
 
-video_folder = "/home/loganh/Torrent/House MD Season 3"
+video_folder = "/home/loganh/Torrent/House MD"
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
 def ensure_temp_directory(temp_folder="temp_scenes"):
@@ -63,7 +63,10 @@ def refine_scenes(video_path, scene_list, max_scene_length=60, threshold_step=5,
             refined_scenes.extend(refine_scenes(temp_scene_path, new_scene_list, max_scene_length))
             
             # Clean up temporary files
-            os.remove(temp_scene_path)
+            try:
+                os.remove(temp_scene_path)
+            except:
+                pass
         else:
             refined_scenes.append(scene)
     
@@ -141,10 +144,50 @@ def score_scene(scene_clip):
     total_score = emotion_score + dr_house_score
     return total_score
 
+def crop_and_resize_clip(clip, target_width=405, target_height=720):
+    """
+    Crop and resize a clip to match the target resolution (405x720).
+    
+    Parameters:
+        clip (VideoFileClip): The input video clip to be processed.
+        target_width (int): The target width of the final clip.
+        target_height (int): The target height of the final clip.
+    
+    Returns:
+        VideoFileClip: The cropped and resized video clip.
+    """
+    # Get the current dimensions of the clip
+    clip_width, clip_height = clip.size
+
+    # Calculate the aspect ratios
+    target_aspect_ratio = target_width / target_height
+    clip_aspect_ratio = clip_width / clip_height
+
+    # Determine cropping dimensions to center the frame
+    if clip_aspect_ratio > target_aspect_ratio:
+        # Crop width to match the target aspect ratio
+        new_width = int(clip_height * target_aspect_ratio)
+        x1 = (clip_width - new_width) // 2
+        x2 = x1 + new_width
+        y1, y2 = 0, clip_height
+    else:
+        # Crop height to match the target aspect ratio
+        new_height = int(clip_width / target_aspect_ratio)
+        y1 = (clip_height - new_height) // 2
+        y2 = y1 + new_height
+        x1, x2 = 0, clip_width
+
+    # Crop the clip to the calculated dimensions
+    cropped_clip = clip.crop(x1=x1, y1=y1, x2=x2, y2=y2)
+
+    # Resize the cropped clip to the target dimensions
+    resized_clip = cropped_clip.resize(width=target_width, height=target_height)
+
+    return resized_clip
 
 
 
-def save_top_scenes(top_scenes, episode_output_dir):
+def save_top_scenes(top_scenes, episode_output_dir, target_width=405, target_height=720):
     """Save the top N scenes to the episode's output folder."""
     # Ensure the directory exists (already created by create_episode_output_directory)
     if os.path.exists(episode_output_dir):
@@ -154,13 +197,18 @@ def save_top_scenes(top_scenes, episode_output_dir):
     
     for idx, (scene_clip, score) in enumerate(top_scenes):
         try:
-            # Save each clip with a filename indicating its score
+            # Crop and resize the clip to 405x720
+            processed_clip = crop_and_resize_clip(scene_clip, target_width, target_height)
+
+            # Save the processed clip
             output_path = os.path.join(episode_output_dir, f"scene_{idx+1}_score_{score}.mp4")
-            print(f"Saving scene {idx+1} to {output_path}...")
-            scene_clip.write_videofile(output_path, codec="libx264")
+            print(f"Saving cropped and resized scene {idx+1} to {output_path}...")
+            processed_clip.write_videofile(output_path, codec="libx264")
             print(f"Scene {idx+1} saved to {output_path}.")
         except Exception as e:
             print(f"Error saving scene {idx+1}: {e}")
+
+
 
 
 
@@ -170,32 +218,6 @@ def detect_face(frame):
     faces = face_cascade.detectMultiScale(gray, 1.1, 4)
     return faces
 
-# Function to dynamically crop video based on face location
-def dynamic_crop(get_frame, t):
-    frame = get_frame(t)
-    faces = detect_face(frame)
-
-    if len(faces) > 0:
-        # Take the first detected face for simplicity
-        x, y, w, h = faces[0]
-        center_x, center_y = x + w // 2, y + h // 2
-    else:
-        # No face detected, center the frame manually
-        print("Warning: No face detected in frame. Centering frame...")
-        center_x, center_y = frame.shape[1] // 2, frame.shape[0] // 2
-
-    # Define cropping area (keeping face in center or centering frame)
-    crop_width = 1920
-    crop_height = 1080
-    start_x = max(0, center_x - crop_width // 2)
-    start_y = max(0, center_y - crop_height // 2)
-    
-    # Ensure we don't go out of frame bounds
-    start_x = min(start_x, frame.shape[1] - crop_width)
-    start_y = min(start_y, frame.shape[0] - crop_height)
-
-    cropped_frame = frame[start_y:start_y + crop_height, start_x:start_x + crop_width]
-    return cropped_frame
 
 
 def create_episode_output_directory(video_path):
@@ -214,7 +236,7 @@ def create_episode_output_directory(video_path):
 
 
 for filename in os.listdir(video_folder):
-    if filename.endswith(".mkv"):  # Add any other video formats you want to process
+    if filename.endswith(".mkv") or filename.endswith(".m4v"):  # Add any other video formats you want to process
         video_path = os.path.join(video_folder, filename)
         print(f"Processing video: {video_path}")
 

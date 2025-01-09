@@ -1,3 +1,12 @@
+###TODO
+'''
+integrate subtitles
+auto title and caption, probably based on generated subtitles
+auto post
+POSSIBLY make a django webapp
+
+
+'''
 from moviepy.editor import VideoFileClip, concatenate_videoclips
 from scenedetect import VideoManager, SceneManager
 from scenedetect.detectors import ContentDetector
@@ -6,6 +15,7 @@ import os
 import cv2
 import numpy as np
 import shutil
+import subtitles
 
 video_folder = "/home/loganh/Torrent/House MD"
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
@@ -22,18 +32,18 @@ def ensure_temp_directory(temp_folder="temp_scenes"):
 def detect_scenes(video_path, threshold=30):
     """Detects initial scenes using the specified threshold."""
     # Create a video manager object
-    video_manager = VideoManager([video_path])
-    scene_manager = SceneManager()
-    scene_manager.add_detector(ContentDetector(threshold=threshold))
+    videoManager = VideoManager([video_path])
+    sceneManager = SceneManager()
+    sceneManager.add_detector(ContentDetector(threshold=threshold))
 
     # Start the video manager
-    video_manager.start()
+    videoManager.start()
 
     # Detect scenes
-    scene_manager.detect_scenes(video_manager)
+    sceneManager.detect_scenes(videoManager)
 
     # Get detected scenes
-    scene_list = scene_manager.get_scene_list()
+    scene_list = sceneManager.get_scene_list()
 
     print(f"Initial detection found {len(scene_list)} scenes.")
     return scene_list
@@ -230,13 +240,15 @@ def create_episode_output_directory(video_path):
     if not os.path.exists(episode_output_dir):
         os.makedirs(episode_output_dir)
     
+    print ("This is the output directory: ", episode_output_dir )
+
     return episode_output_dir
 
 
 
 
 for filename in os.listdir(video_folder):
-    if filename.endswith(".mkv") or filename.endswith(".m4v"):  # Add any other video formats you want to process
+    if filename.endswith(".mkv") or filename.endswith(".m4v"):  
         video_path = os.path.join(video_folder, filename)
         print(f"Processing video: {video_path}")
 
@@ -258,6 +270,8 @@ for filename in os.listdir(video_folder):
 
         # Save the top 5 scenes
         save_top_scenes(top_scenes, episode_output_dir)
+
+
 
 
 

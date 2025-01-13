@@ -1,14 +1,14 @@
-videoPath = "/home/loganh/Torrent/House MD/House - S03E03 - Informed Consent output/scene_1_score_152.mp4"
+
 
 
 import whisper
 from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
 from pysrt import SubRipFile, SubRipItem, SubRipTime
 from moviepy.video.tools.subtitles import SubtitlesClip
+import os
 
 
 def format_time_with_milliseconds(seconds):
-    """Convert seconds to SRT-compatible timestamp with millisecond precision."""
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
     secs = int(seconds % 60)
@@ -20,7 +20,12 @@ def extract_audio(video_path, audio_path="audio.wav"):
     clip.audio.write_audiofile(audio_path)
     return audio_path
 
-def generate_subtitles(video_path, model_name="small", output_srt="subtitles.srt"):
+
+
+
+
+def generate_subtitles(video_path, model_name="base", output_srt="temp.srt"):
+    video = VideoFileClip(video_path)
     audio_path = extract_audio(video_path)
     model = whisper.load_model(model_name)
     result = model.transcribe(audio_path, word_timestamps=True)
@@ -35,17 +40,28 @@ def generate_subtitles(video_path, model_name="small", output_srt="subtitles.srt
             file.write(f"{i + 1}\n{start_time} --> {end_time}\n{text}\n\n")
     
     print(f"Subtitles saved to {output_srt}")
+    save_scenes_with_appended_subtitles(video, video_path)
 
 
-def subtitle_generator(txt):
+
+
+
+def format_subtitles(txt):
     return TextClip(txt, font='Arial', fontsize=24, color='white', size=(405, None), align='center', method='caption')
 
-video = VideoFileClip(videoPath)
-# Usage
-generate_subtitles(videoPath)
 
-subtitles = SubtitlesClip("subtitles.srt", subtitle_generator)
+def save_scenes_with_appended_subtitles(video, video_path):
+    subtitles = SubtitlesClip("temp.srt", format_subtitles)
 
 
-final_video = CompositeVideoClip([video, subtitles.set_position(('center', video.h - 150))])
-final_video.write_videofile("output_with_subtitles.mp4", fps=video.fps)
+    final_video = CompositeVideoClip([video, subtitles.set_position(('center', video.h - 150))])
+    final_video.write_videofile(video_path +"output_with_subtitles.mp4", fps=video.fps)
+    os.remove("temp.srt")
+
+
+
+
+
+
+
+

@@ -1,4 +1,8 @@
 deepface==0.0.93
 moviepy==1.0.3
+numpy==2.2.1
+openai_whisper==20240930
+opencv_python==4.10.0.84
+pysrt==1.1.2
 scenedetect==0.6.4
-tf-keras==2.17.0
+whisper==1.1.10

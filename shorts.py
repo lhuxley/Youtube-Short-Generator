@@ -15,7 +15,7 @@ import os
 import cv2
 import numpy as np
 import shutil
-import subtitles
+from subtitles import generate_subtitles
 
 video_folder = "/home/loganh/Torrent/House MD"
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
@@ -119,7 +119,7 @@ def score_scene(scene_clip):
             # Analyze emotions in the frame
             result = DeepFace.analyze(frame, actions=['emotion'])
 
-            # Check if the result is a list (which seems to be the case)
+
             if isinstance(result, list):
                 result = result[0]  # Access the first dictionary from the list
             
@@ -270,6 +270,10 @@ for filename in os.listdir(video_folder):
 
         # Save the top 5 scenes
         save_top_scenes(top_scenes, episode_output_dir)
+        cpy = os.listdir(episode_output_dir).copy()
+        print(cpy)
+        for top_scene in cpy:
+            generate_subtitles(episode_output_dir + "/" + top_scene, video_path)
 
 
 

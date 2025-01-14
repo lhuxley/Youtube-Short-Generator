@@ -24,7 +24,7 @@ def extract_audio(video_path, audio_path="audio.wav"):
 
 
 
-def generate_subtitles(video_path, model_name="base", output_srt="temp.srt"):
+def generate_subtitles(video_path, model_name="small", output_srt="temp.srt"):
     video = VideoFileClip(video_path)
     audio_path = extract_audio(video_path)
     model = whisper.load_model(model_name)
@@ -57,11 +57,11 @@ def save_scenes_with_appended_subtitles(video, video_path):
     final_video = CompositeVideoClip([video, subtitles.set_position(('center', video.h - 150))])
     final_video.write_videofile(video_path +"output_with_subtitles.mp4", fps=video.fps)
     os.remove("temp.srt")
+    os.remove(video_path)
 
 
 
-
-
+generate_subtitles("/home/loganh/Torrent/House MD/House - S06E14 - Private Lives output/scene_1_score_163.mp4")
 
 
 

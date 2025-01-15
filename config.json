@@ -1,0 +1,26 @@
+{
+    "api_key": "your_api_key_here",
+    "videoFolder": "/home/loganh/Torrent/House MD",
+    "facePath": "drhouse.jpg",
+    "topXClips": "6",
+    "emotionsScore": {
+        "happy": 1,
+        "sad": 3,
+        "neutral": 1,
+        "angry": 3,
+        "fear": 3,
+        "surprise": 2,
+        "disgust": 2,
+        "contempt": 2
+    },
+    "recent_activity": [
+        {
+            "date": "2025-01-15",
+            "action": "login"
+        },
+        {
+            "date": "2025-01-14",
+            "action": "updated profile"
+        }
+    ]
+}

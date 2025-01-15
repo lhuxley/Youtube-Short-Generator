@@ -17,13 +17,20 @@ import cv2
 import numpy as np
 import shutil
 import subprocess
+import json
 
 
+with open('config.json', 'r', encoding='utf-8') as file:
+    data = json.load(file)
 
-video_folder = "/home/loganh/Torrent/House MD"
+    
+video_folder = data["videoFolder"]
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 dr_house_image = cv2.imread("drhouse.jpg")
 dr_house_face = DeepFace.extract_faces(dr_house_image, detector_backend='opencv')  
+
+
+
 
 def ensure_temp_directory(temp_folder="temp_scenes"):
     #Ensure that the temp folder exists
@@ -107,7 +114,7 @@ def process_scenes(video_path, scene_list):
 
 def score_scene(scene_clip):
     emotions = []
-    dr_house_score = 0  
+    detecterPersonScore = 0  
     for frame in scene_clip.iter_frames(fps=1):
         try:
             
@@ -122,11 +129,11 @@ def score_scene(scene_clip):
             
             detected_faces = DeepFace.extract_faces(frame, detector_backend='opencv')
             try:
-                match = DeepFace.verify(frame, "drhouse.jpg" )
+                match = DeepFace.verify(frame, data["facePath"] )
                 
                 if match['verified']:
                     print("Provided face detected in this scene!")
-                    dr_house_score += 5  
+                    detecterPersonScore += 5  
 
 
             except Exception as z:
@@ -134,15 +141,10 @@ def score_scene(scene_clip):
         except Exception as e:
             pass
             
-
-    # Calculate the scene's total emotional score
-    emotional_intensity = {
-        'happy': 1, 'sad': 3, 'neutral': 1, 'angry': 3, 'fear': 3, 'surprise': 2, 'disgust': 2, 'contempt': 2, 
-    }
+    emotional_intensity = data["emotionsScore"]
     emotion_score = sum(emotional_intensity.get(e, 0) for e in emotions)
 
-    # Add the Dr. House score to the total
-    total_score = emotion_score + dr_house_score
+    total_score = emotion_score + detecterPersonScore
     return total_score
 
 def crop_and_resize_clip(clip, target_width=405, target_height=720):
@@ -235,7 +237,7 @@ for filename in os.listdir(video_folder):
 
         scene_scores = process_scenes(videoPath, final_scenes)
 
-        top_scenes = sorted(scene_scores, key=lambda x: x[1], reverse=True)[:5]
+        top_scenes = sorted(scene_scores, key=lambda x: x[1], reverse=True)[:data["topXClips"]]
 
         save_top_scenes(top_scenes, episode_output_dir)
 

@@ -15,7 +15,9 @@ import os
 import cv2
 import numpy as np
 import shutil
-from subtitles import generate_subtitles
+import subprocess
+
+
 
 video_folder = "/home/loganh/Torrent/House MD"
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
@@ -256,6 +258,14 @@ for filename in os.listdir(video_folder):
         ensure_temp_directory()
         episode_output_dir = create_episode_output_directory(video_path)
 
+
+
+
+
+
+
+
+
         # Detect initial scenes
         initial_scenes = detect_scenes(video_path, threshold=55)  # First pass
 
@@ -270,10 +280,10 @@ for filename in os.listdir(video_folder):
 
         # Save the top 5 scenes
         save_top_scenes(top_scenes, episode_output_dir)
-        cpy = os.listdir(episode_output_dir).copy()
-        print(cpy)
-        for top_scene in cpy:
-            generate_subtitles(episode_output_dir + "/" + top_scene, video_path)
+
+        command = ['python', 'subtitles.py', episode_output_dir]
+        subprocess.run(command)
+
 
 
 

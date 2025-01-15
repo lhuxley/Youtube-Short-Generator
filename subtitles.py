@@ -6,7 +6,7 @@ from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
 from pysrt import SubRipFile, SubRipItem, SubRipTime
 from moviepy.video.tools.subtitles import SubtitlesClip
 import os
-
+import sys
 
 def format_time_with_milliseconds(seconds):
     hours = int(seconds // 3600)
@@ -24,11 +24,17 @@ def extract_audio(video_path, audio_path="audio.wav"):
 
 
 
-def generate_subtitles(video_path, model_name="small", output_srt="temp.srt"):
+def generate_subtitles(video_path, model_name="base", output_srt="temp.srt"):
+
+
     video = VideoFileClip(video_path)
     audio_path = extract_audio(video_path)
     model = whisper.load_model(model_name)
     result = model.transcribe(audio_path, word_timestamps=True)
+
+    model_path = os.path.abspath("models/base.pt")
+            
+    print(f"Loading model from: {model_path}")
 
     with open(output_srt, "w") as file:
         for i, segment in enumerate(result["segments"]):
@@ -61,7 +67,10 @@ def save_scenes_with_appended_subtitles(video, video_path):
 
 
 
-generate_subtitles("/home/loganh/Torrent/House MD/House - S06E14 - Private Lives output/scene_1_score_163.mp4")
+#generate_subtitles("/home/loganh/Torrent/House MD/House - S06E14 - Private Lives output/scene_1_score_163.mp4")
 
 
 
+cpy = os.listdir( sys.argv[1]).copy()
+for top_scene in cpy:
+    generate_subtitles(sys.argv[1] + "/" + top_scene)

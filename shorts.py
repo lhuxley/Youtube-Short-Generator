@@ -1,9 +1,10 @@
 ###TODO
 '''
-integrate subtitles
+
 auto title and caption, probably based on generated subtitles
 auto post
-POSSIBLY make a django webapp
+support different resolutions
+
 
 
 '''
@@ -21,6 +22,8 @@ import subprocess
 
 video_folder = "/home/loganh/Torrent/House MD"
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+dr_house_image = cv2.imread("drhouse.jpg")
+dr_house_face = DeepFace.extract_faces(dr_house_image, detector_backend='opencv')  
 
 def ensure_temp_directory(temp_folder="temp_scenes"):
     #Ensure that the temp folder exists
@@ -32,19 +35,15 @@ def ensure_temp_directory(temp_folder="temp_scenes"):
 
 
 def detect_scenes(video_path, threshold=30):
-    """Detects initial scenes using the specified threshold."""
-    # Create a video manager object
+
     videoManager = VideoManager([video_path])
     sceneManager = SceneManager()
     sceneManager.add_detector(ContentDetector(threshold=threshold))
 
-    # Start the video manager
     videoManager.start()
 
-    # Detect scenes
     sceneManager.detect_scenes(videoManager)
 
-    # Get detected scenes
     scene_list = sceneManager.get_scene_list()
 
     print(f"Initial detection found {len(scene_list)} scenes.")
@@ -52,7 +51,6 @@ def detect_scenes(video_path, threshold=30):
 
 
 def refine_scenes(video_path, scene_list, max_scene_length=60, threshold_step=5, min_threshold=15):
-    """Refines scene list, splitting any scene over max_scene_length recursively."""
     refined_scenes = []
     for scene in scene_list:
         start_time = scene[0].get_seconds()
@@ -60,7 +58,7 @@ def refine_scenes(video_path, scene_list, max_scene_length=60, threshold_step=5,
         duration = end_time - start_time
 
         if duration > max_scene_length:
-            # Refine scene by re-detecting with a stricter threshold
+
             print(f"Refining scene: Start {scene[0].get_timecode()}, End {scene[1].get_timecode()}, Duration: {duration:.2f} seconds.")
             
             # Extract the portion of the video corresponding to this scene
@@ -73,19 +71,14 @@ def refine_scenes(video_path, scene_list, max_scene_length=60, threshold_step=5,
 
             # Recur to ensure all sub-scenes are under the max length
             refined_scenes.extend(refine_scenes(temp_scene_path, new_scene_list, max_scene_length))
-            
-            # Clean up temporary files
-            try:
-                os.remove(temp_scene_path)
-            except:
-                pass
+
+            os.remove(temp_scene_path)
+
         else:
             refined_scenes.append(scene)
     
     return refined_scenes
     
-    # Return scene list for further processing
-    return scene_list
 
 
 def process_scenes(video_path, scene_list):
@@ -110,38 +103,34 @@ def process_scenes(video_path, scene_list):
     return scene_scores
 
 
-dr_house_image = cv2.imread("drhouse.jpg")
-dr_house_face = DeepFace.extract_faces(dr_house_image, detector_backend='opencv')  # Detect the face in the reference image
+
 
 def score_scene(scene_clip):
     emotions = []
     dr_house_score = 0  
     for frame in scene_clip.iter_frames(fps=1):
         try:
-            # Analyze emotions in the frame
+            
             result = DeepFace.analyze(frame, actions=['emotion'])
 
 
             if isinstance(result, list):
-                result = result[0]  # Access the first dictionary from the list
-            
-            # Extract the dominant emotion
+                result = result[0]  
+
             emotion = result['dominant_emotion']
             emotions.append(emotion)
             
-            # Detect faces in the frame
             detected_faces = DeepFace.extract_faces(frame, detector_backend='opencv')
             try:
-                #  Check if Dr. House's face is detected in the frame
                 match = DeepFace.verify(frame, "drhouse.jpg" )
                 
                 if match['verified']:
-                    print("Dr. House detected in this scene!")
-                    dr_house_score += 5  # Increase score for Dr. House presence
+                    print("Provided face detected in this scene!")
+                    dr_house_score += 5  
 
 
             except Exception as z:
-                print(f"House face detection messed up :{frame, str(z)}")
+                print(f"Face detection messed up :{frame, str(z)}")
         except Exception as e:
             pass
             
@@ -157,42 +146,25 @@ def score_scene(scene_clip):
     return total_score
 
 def crop_and_resize_clip(clip, target_width=405, target_height=720):
-    """
-    Crop and resize a clip to match the target resolution (405x720).
-    
-    Parameters:
-        clip (VideoFileClip): The input video clip to be processed.
-        target_width (int): The target width of the final clip.
-        target_height (int): The target height of the final clip.
-    
-    Returns:
-        VideoFileClip: The cropped and resized video clip.
-    """
-    # Get the current dimensions of the clip
+
     clip_width, clip_height = clip.size
 
-    # Calculate the aspect ratios
     target_aspect_ratio = target_width / target_height
     clip_aspect_ratio = clip_width / clip_height
 
-    # Determine cropping dimensions to center the frame
     if clip_aspect_ratio > target_aspect_ratio:
-        # Crop width to match the target aspect ratio
         new_width = int(clip_height * target_aspect_ratio)
         x1 = (clip_width - new_width) // 2
         x2 = x1 + new_width
         y1, y2 = 0, clip_height
     else:
-        # Crop height to match the target aspect ratio
         new_height = int(clip_width / target_aspect_ratio)
         y1 = (clip_height - new_height) // 2
         y2 = y1 + new_height
         x1, x2 = 0, clip_width
 
-    # Crop the clip to the calculated dimensions
     cropped_clip = clip.crop(x1=x1, y1=y1, x2=x2, y2=y2)
 
-    # Resize the cropped clip to the target dimensions
     resized_clip = cropped_clip.resize(width=target_width, height=target_height)
 
     return resized_clip
@@ -200,8 +172,7 @@ def crop_and_resize_clip(clip, target_width=405, target_height=720):
 
 
 def save_top_scenes(top_scenes, episode_output_dir, target_width=405, target_height=720):
-    """Save the top N scenes to the episode's output folder."""
-    # Ensure the directory exists (already created by create_episode_output_directory)
+
     if os.path.exists(episode_output_dir):
         shutil.rmtree(episode_output_dir)
     if not os.path.exists(episode_output_dir):
@@ -251,38 +222,24 @@ def create_episode_output_directory(video_path):
 
 for filename in os.listdir(video_folder):
     if filename.endswith(".mkv") or filename.endswith(".m4v"):  
-        video_path = os.path.join(video_folder, filename)
-        print(f"Processing video: {video_path}")
+        videoPath = os.path.join(video_folder, filename)
+        print(f"Processing video: {videoPath}")
 
-        # Ensure necessary directories exist
         ensure_temp_directory()
-        episode_output_dir = create_episode_output_directory(video_path)
+        episode_output_dir = create_episode_output_directory(videoPath)
 
 
+        initial_scenes = detect_scenes(videoPath, threshold=55) 
 
+        final_scenes = refine_scenes(videoPath, initial_scenes, max_scene_length=60)
 
+        scene_scores = process_scenes(videoPath, final_scenes)
 
-
-
-
-
-        # Detect initial scenes
-        initial_scenes = detect_scenes(video_path, threshold=55)  # First pass
-
-        # Refine scenes to ensure all are under the max length
-        final_scenes = refine_scenes(video_path, initial_scenes, max_scene_length=60)
-
-        # Cut scenes into clips and score them
-        scene_scores = process_scenes(video_path, final_scenes)
-
-        # Sort the scenes based on their emotional score in descending order
         top_scenes = sorted(scene_scores, key=lambda x: x[1], reverse=True)[:5]
 
-        # Save the top 5 scenes
         save_top_scenes(top_scenes, episode_output_dir)
 
-        command = ['python', 'subtitles.py', episode_output_dir]
-        subprocess.run(command)
+        subprocess.run(['python', 'subtitles.py', episode_output_dir], check = False)
 
 
 

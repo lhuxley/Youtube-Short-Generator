@@ -42,6 +42,8 @@ def generate_subtitles(video_path, model_name="base", output_srt="temp.srt"):
             print(segment["end"])
             start_time = format_time_with_milliseconds(segment["start"])
             end_time = format_time_with_milliseconds(segment["end"])
+            if start_time == end_time:
+                continue  # Skip invalid segments with zero duration
             text = segment["text"]
             file.write(f"{i + 1}\n{start_time} --> {end_time}\n{text}\n\n")
     
@@ -64,12 +66,6 @@ def save_scenes_with_appended_subtitles(video, video_path):
     final_video.write_videofile(video_path +"output_with_subtitles.mp4", fps=video.fps)
     os.remove("temp.srt")
     os.remove(video_path)
-
-
-
-#generate_subtitles("/home/loganh/Torrent/House MD/House - S06E14 - Private Lives output/scene_1_score_163.mp4")
-
-
 
 cpy = os.listdir( sys.argv[1]).copy()
 for top_scene in cpy:

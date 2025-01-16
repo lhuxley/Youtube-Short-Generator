@@ -12,15 +12,5 @@
         "surprise": 2,
         "disgust": 2,
         "contempt": 2
-    },
-    "recent_activity": [
-        {
-            "date": "2025-01-15",
-            "action": "login"
-        },
-        {
-            "date": "2025-01-14",
-            "action": "updated profile"
-        }
-    ]
+    }
 }

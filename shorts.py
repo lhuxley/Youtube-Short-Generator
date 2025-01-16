@@ -20,14 +20,7 @@ import subprocess
 import json
 
 
-with open('config.json', 'r', encoding='utf-8') as file:
-    data = json.load(file)
 
-    
-video_folder = data["videoFolder"]
-face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-dr_house_image = cv2.imread("drhouse.jpg")
-dr_house_face = DeepFace.extract_faces(dr_house_image, detector_backend='opencv')  
 
 
 
@@ -222,6 +215,16 @@ def create_episode_output_directory(video_path):
 
 
 
+
+with open('config.json', 'r', encoding='utf-8') as file:
+    data = json.load(file)
+
+    
+video_folder = data["videoFolder"]
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+face_image = cv2.imread(data["facePath"])
+deep_face = DeepFace.extract_faces(face_image, detector_backend='opencv')  
+
 for filename in os.listdir(video_folder):
     if filename.endswith(".mkv") or filename.endswith(".m4v"):  
         videoPath = os.path.join(video_folder, filename)
@@ -237,7 +240,7 @@ for filename in os.listdir(video_folder):
 
         scene_scores = process_scenes(videoPath, final_scenes)
 
-        top_scenes = sorted(scene_scores, key=lambda x: x[1], reverse=True)[:data["topXClips"]]
+        top_scenes = sorted(scene_scores, key=lambda x: x[1], reverse=True)[:int(data["topXClips"])]
 
         save_top_scenes(top_scenes, episode_output_dir)
 

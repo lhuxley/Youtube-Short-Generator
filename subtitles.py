@@ -66,6 +66,7 @@ def save_scenes_with_appended_subtitles(video, video_path):
     final_video.write_videofile(video_path +"output_with_subtitles.mp4", fps=video.fps)
     os.remove("temp.srt")
     os.remove(video_path)
+    
 
 cpy = os.listdir( sys.argv[1]).copy()
 for top_scene in cpy:

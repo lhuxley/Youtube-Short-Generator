@@ -7,6 +7,39 @@ from pysrt import SubRipFile, SubRipItem, SubRipTime
 from moviepy.video.tools.subtitles import SubtitlesClip
 import os
 import sys
+from collections import Counter
+import re
+from transformers import pipeline
+
+
+def extract_dialogue_phrases(subtitle_path):
+    with open(subtitle_path, 'r') as file:
+        subtitles = file.read()
+
+    # Extract all dialogue phrases
+    phrases = re.findall(r'(?<=\n)(.*?)(?=\n\n)', subtitles)
+    return [phrase.strip() for phrase in phrases if len(phrase.split()) > 3]
+
+def get_most_dramatic_phrase(phrases):
+    # Load sentiment analysis model
+    sentiment_analyzer = pipeline("sentiment-analysis")
+    
+    # Analyze sentiment for each phrase
+    sentiment_scores = [(phrase, sentiment_analyzer(phrase)[0]['score']) for phrase in phrases]
+
+    most_dramatic = max(sentiment_scores, key=lambda x: x[1])
+    return most_dramatic[0]
+
+def generate_title(subtitle_path):
+    phrases = extract_dialogue_phrases(subtitle_path)
+    if not phrases:
+        return "Unexpected Moments"
+    
+    dramatic_phrase = get_most_dramatic_phrase(phrases)
+    return f'"{dramatic_phrase}"'
+
+
+
 
 def format_time_with_milliseconds(seconds):
     hours = int(seconds // 3600)
@@ -43,7 +76,7 @@ def generate_subtitles(video_path, model_name="base", output_srt="temp.srt"):
             start_time = format_time_with_milliseconds(segment["start"])
             end_time = format_time_with_milliseconds(segment["end"])
             if start_time == end_time:
-                continue  # Skip invalid segments with zero duration
+                continue 
             text = segment["text"]
             file.write(f"{i + 1}\n{start_time} --> {end_time}\n{text}\n\n")
     
@@ -55,7 +88,7 @@ def generate_subtitles(video_path, model_name="base", output_srt="temp.srt"):
 
 
 def format_subtitles(txt):
-    return TextClip(txt, font='Arial', fontsize=24, color='white', size=(405, None), align='center', method='caption')
+    return TextClip(txt, font='Arial', fontsize=40, color='white', size=(405, None), align='center', method='caption')
 
 
 def save_scenes_with_appended_subtitles(video, video_path):
@@ -63,9 +96,14 @@ def save_scenes_with_appended_subtitles(video, video_path):
 
 
     final_video = CompositeVideoClip([video, subtitles.set_position(('center', video.h - 150))])
-    final_video.write_videofile(video_path +"output_with_subtitles.mp4", fps=video.fps)
+
+    title = generate_title("temp.srt")
+
+    final_video.write_videofile(sys.argv[1] + "/"+ title + "| House MD.mp4", fps=video.fps)
+
     os.remove("temp.srt")
     os.remove(video_path)
+    os.remove("audio.wav")
     
 
 cpy = os.listdir( sys.argv[1]).copy()

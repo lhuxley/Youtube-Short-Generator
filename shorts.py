@@ -5,8 +5,6 @@ auto title and caption, probably based on generated subtitles
 auto post
 support different resolutions
 
-
-
 '''
 from moviepy.editor import VideoFileClip, concatenate_videoclips
 from scenedetect import VideoManager, SceneManager
@@ -21,12 +19,7 @@ import json
 
 
 
-
-
-
-
 def ensure_temp_directory(temp_folder="temp_scenes"):
-    #Ensure that the temp folder exists
     if not os.path.exists(temp_folder):
         os.makedirs(temp_folder)
     return temp_folder
@@ -61,15 +54,12 @@ def refine_scenes(video_path, scene_list, max_scene_length=60, threshold_step=5,
 
             print(f"Refining scene: Start {scene[0].get_timecode()}, End {scene[1].get_timecode()}, Duration: {duration:.2f} seconds.")
             
-            # Extract the portion of the video corresponding to this scene
             temp_scene_path = "temp_scene.mp4"
             VideoFileClip(video_path).subclip(start_time, end_time).write_videofile(temp_scene_path, codec="libx264")
 
-            # Run detection on the smaller scene with an adjusted threshold
             new_threshold = max(min_threshold, threshold_step)
             new_scene_list = detect_scenes(temp_scene_path, threshold=new_threshold)
 
-            # Recur to ensure all sub-scenes are under the max length
             refined_scenes.extend(refine_scenes(temp_scene_path, new_scene_list, max_scene_length))
 
             os.remove(temp_scene_path)
@@ -82,17 +72,14 @@ def refine_scenes(video_path, scene_list, max_scene_length=60, threshold_step=5,
 
 
 def process_scenes(video_path, scene_list):
-    """Cut scenes from the video based on the detected scene list."""
     clip = VideoFileClip(video_path)
     scene_scores = []
 
-    # Process each scene and score it based on emotion
     for idx, scene in enumerate(scene_list):
         start_time = scene[0].get_seconds()
         end_time = scene[1].get_seconds()
         scene_clip = clip.subclip(start_time, end_time)
         length = end_time - start_time
-        # Analyze emotion for the scene
         if length >= 20:
             scene_score = score_scene(scene_clip)
 
@@ -126,7 +113,7 @@ def score_scene(scene_clip):
                 
                 if match['verified']:
                     print("Provided face detected in this scene!")
-                    detecterPersonScore += 5  
+                    detecterPersonScore += data["faceWeight"]
 
 
             except Exception as z:
@@ -139,6 +126,7 @@ def score_scene(scene_clip):
 
     total_score = emotion_score + detecterPersonScore
     return total_score
+
 
 def crop_and_resize_clip(clip, target_width=405, target_height=720):
 
@@ -175,10 +163,8 @@ def save_top_scenes(top_scenes, episode_output_dir, target_width=405, target_hei
     
     for idx, (scene_clip, score) in enumerate(top_scenes):
         try:
-            # Crop and resize the clip to 405x720
             processed_clip = crop_and_resize_clip(scene_clip, target_width, target_height)
 
-            # Save the processed clip
             output_path = os.path.join(episode_output_dir, f"scene_{idx+1}_score_{score}.mp4")
             print(f"Saving cropped and resized scene {idx+1} to {output_path}...")
             processed_clip.write_videofile(output_path, codec="libx264")
@@ -199,12 +185,10 @@ def detect_face(frame):
 
 
 def create_episode_output_directory(video_path):
-    """Create an output directory for each episode based on the video filename."""
-    # Extract episode name from the video filename
+    
     episode_name = os.path.splitext(os.path.basename(video_path))[0]
     episode_output_dir = os.path.join(os.path.dirname(video_path), f"{episode_name} output")
 
-    # Ensure the directory exists
     if not os.path.exists(episode_output_dir):
         os.makedirs(episode_output_dir)
     
@@ -240,7 +224,7 @@ for filename in os.listdir(video_folder):
 
         scene_scores = process_scenes(videoPath, final_scenes)
 
-        top_scenes = sorted(scene_scores, key=lambda x: x[1], reverse=True)[:int(data["topXClips"])]
+        top_scenes = sorted(scene_scores, key=lambda x: x[1], reverse=True)[:data["topXClips"]]
 
         save_top_scenes(top_scenes, episode_output_dir)
 

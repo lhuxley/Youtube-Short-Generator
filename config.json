@@ -2,7 +2,8 @@
     "api_key": "your_api_key_here",
     "videoFolder": "/home/loganh/Torrent/House MD",
     "facePath": "drhouse.jpg",
-    "topXClips": "6",
+    "faceWeight": 5,
+    "topXClips": 6,
     "emotionsScore": {
         "happy": 1,
         "sad": 3,

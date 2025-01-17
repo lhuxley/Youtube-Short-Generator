@@ -199,40 +199,40 @@ def create_episode_output_directory(video_path):
 
 
 
+if __name__ == "__main__":
+    with open('config.json', 'r', encoding='utf-8') as file:
+        data = json.load(file)
 
-with open('config.json', 'r', encoding='utf-8') as file:
-    data = json.load(file)
+        
+    video_folder = data["videoFolder"]
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    face_image = cv2.imread(data["facePath"])
+    deep_face = DeepFace.extract_faces(face_image, detector_backend='opencv')  
 
-    
-video_folder = data["videoFolder"]
-face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-face_image = cv2.imread(data["facePath"])
-deep_face = DeepFace.extract_faces(face_image, detector_backend='opencv')  
+    for filename in os.listdir(video_folder):
+        if filename.endswith(".mkv") or filename.endswith(".m4v"):  
+            videoPath = os.path.join(video_folder, filename)
+            print(f"Processing video: {videoPath}")
 
-for filename in os.listdir(video_folder):
-    if filename.endswith(".mkv") or filename.endswith(".m4v"):  
-        videoPath = os.path.join(video_folder, filename)
-        print(f"Processing video: {videoPath}")
-
-        ensure_temp_directory()
-        episode_output_dir = create_episode_output_directory(videoPath)
-
-
-        initial_scenes = detect_scenes(videoPath, threshold=55) 
-
-        final_scenes = refine_scenes(videoPath, initial_scenes, max_scene_length=60)
-
-        scene_scores = process_scenes(videoPath, final_scenes)
-
-        top_scenes = sorted(scene_scores, key=lambda x: x[1], reverse=True)[:data["topXClips"]]
-
-        save_top_scenes(top_scenes, episode_output_dir)
-
-        subprocess.run(['python', 'subtitles.py', episode_output_dir], check = False)
+            ensure_temp_directory()
+            episode_output_dir = create_episode_output_directory(videoPath)
 
 
+            initial_scenes = detect_scenes(videoPath, threshold=55) 
+
+            final_scenes = refine_scenes(videoPath, initial_scenes, max_scene_length=60)
+
+            scene_scores = process_scenes(videoPath, final_scenes)
+
+            top_scenes = sorted(scene_scores, key=lambda x: x[1], reverse=True)[:data["topXClips"]]
+
+            save_top_scenes(top_scenes, episode_output_dir)
+
+            subprocess.run(['python', 'subtitles.py', episode_output_dir], check = False)
 
 
 
 
-print("Processing complete.")   
+
+
+    print("Processing complete.")   

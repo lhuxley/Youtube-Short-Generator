@@ -13,6 +13,8 @@ To set up this project locally, follow these steps:
 - Create environment `python -m venv env`
 - Activate your environment `source env/bin/activate` (linux only)
 - Install dependencies `pip install -r requirements.txt`
+
+## Running:
 - Edit config file
 - Run `python3 shorts.py`
 

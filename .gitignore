@@ -1,15 +1,14 @@
-# Ignore environment files
+
 .env
 .env.local
 
-# Ignore Python cache files
 __pycache__/
 *.pyc
 
-# Ignore virtual environment directories
 env/
 venv/
 
-# Ignore restore files
+client_secret*
+
 explicit_filter.restore
 

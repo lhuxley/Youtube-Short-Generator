@@ -16,15 +16,12 @@ def extract_dialogue_phrases(subtitle_path):
     with open(subtitle_path, 'r') as file:
         subtitles = file.read()
 
-    # Extract all dialogue phrases
     phrases = re.findall(r'(?<=\n)(.*?)(?=\n\n)', subtitles)
     return [phrase.strip() for phrase in phrases if len(phrase.split()) > 3]
 
 def get_most_dramatic_phrase(phrases):
-    # Load sentiment analysis model
     sentiment_analyzer = pipeline("sentiment-analysis")
     
-    # Analyze sentiment for each phrase
     sentiment_scores = [(phrase, sentiment_analyzer(phrase)[0]['score']) for phrase in phrases]
 
     most_dramatic = max(sentiment_scores, key=lambda x: x[1])
@@ -99,7 +96,7 @@ def save_scenes_with_appended_subtitles(video, video_path):
 
     title = generate_title("temp.srt")
 
-    final_video.write_videofile(sys.argv[1] + "/"+ title + "| House MD.mp4", fps=video.fps)
+    final_video.write_videofile(sys.argv[1] + "/"+ title + " #Shorts | House MD.mp4", fps=video.fps)
 
     os.remove("temp.srt")
     os.remove(video_path)

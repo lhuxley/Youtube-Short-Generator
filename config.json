@@ -1,5 +1,6 @@
 {
-    "api_key": "your_api_key_here",
+    "autoUpload": "True",
+    "clientSecretPath": "client_secret_92211281326-hra7dthtde2t8ms3gjebqp7tpuoake9s.apps.googleusercontent.com.json",
     "videoFolder": "/home/loganh/Torrent/House MD",
     "facePath": "drhouse.jpg",
     "faceWeight": 5,

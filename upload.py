@@ -2,7 +2,7 @@ import os
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from google_auth_oauthlib.flow import InstalledAppFlow
-import sys
+
 
 def authenticate_youtube():
     # Authenticate using OAuth
@@ -12,7 +12,8 @@ def authenticate_youtube():
     return build("youtube", "v3", credentials=credentials)
 
 
-def upload_video(youtube, video_path, title, description, tags):
+def upload_video( video_path, title, description, tags, privacyStatus):
+    youtube = authenticate_youtube()
     request_body = {
         "snippet": {
             "title": title,
@@ -21,7 +22,7 @@ def upload_video(youtube, video_path, title, description, tags):
             "categoryId": "24", 
         },
         "status": {
-            "privacyStatus": "public",  
+            "privacyStatus": privacyStatus,  
         },
     }
     
@@ -32,12 +33,13 @@ def upload_video(youtube, video_path, title, description, tags):
 
     print("Video uploaded. Video ID:", response["id"])
 
+'''
+if __name__ == "__main__":
+    
+    video_path = "/home/loganh/Torrent/House MD/House - S06E14 - Private Lives output/\"And you're a big part of that.\"| House MD.mp4"
+    title = '"The Most Dramatic Moment!"'
+    description = "Check out this exciting scene! More content coming soon."
+    tags = ["drama", "scenes", "shorts", "entertainment"]
 
-
-youtube = authenticate_youtube()
-video_path = "/home/loganh/Torrent/House MD/House - S06E14 - Private Lives output/\"And you're a big part of that.\"| House MD.mp4"
-title = '"The Most Dramatic Moment!"'
-description = "Check out this exciting scene! More content coming soon."
-tags = ["drama", "scenes", "shorts", "entertainment"]
-
-upload_video(youtube, video_path, title, description, tags)
+    upload_video(video_path, title, description, tags, True)
+'''

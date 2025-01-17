@@ -1,19 +1,17 @@
 
 
-
-import whisper
-from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
-from pysrt import SubRipFile, SubRipItem, SubRipTime
-from moviepy.video.tools.subtitles import SubtitlesClip
 import os
 import sys
-from collections import Counter
+import json
 import re
+import whisper
+from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
+from moviepy.video.tools.subtitles import SubtitlesClip
 from transformers import pipeline
-
+from upload import upload_video
 
 def extract_dialogue_phrases(subtitle_path):
-    with open(subtitle_path, 'r') as file:
+    with open(subtitle_path, 'r', encoding='utf-8') as file:
         subtitles = file.read()
 
     phrases = re.findall(r'(?<=\n)(.*?)(?=\n\n)', subtitles)
@@ -33,7 +31,7 @@ def generate_title(subtitle_path):
         return "Unexpected Moments"
     
     dramatic_phrase = get_most_dramatic_phrase(phrases)
-    return f'"{dramatic_phrase}"'
+    return "\"" + dramatic_phrase + "\"" + " | #Shorts | House M.D."
 
 
 
@@ -78,7 +76,9 @@ def generate_subtitles(video_path, model_name="base", output_srt="temp.srt"):
             file.write(f"{i + 1}\n{start_time} --> {end_time}\n{text}\n\n")
     
     print(f"Subtitles saved to {output_srt}")
-    save_scenes_with_appended_subtitles(video, video_path)
+    final_path = save_scenes_with_appended_subtitles(video, video_path)
+    return final_path
+
 
 
 
@@ -94,15 +94,24 @@ def save_scenes_with_appended_subtitles(video, video_path):
 
     final_video = CompositeVideoClip([video, subtitles.set_position(('center', video.h - 150))])
 
-    title = generate_title("temp.srt")
+    
+    final_path = sys.argv[1] + "subtitled.mp4"
 
-    final_video.write_videofile(sys.argv[1] + "/"+ title + " #Shorts | House MD.mp4", fps=video.fps)
+    final_video.write_videofile(final_path, fps=video.fps)
 
-    os.remove("temp.srt")
+    
     os.remove(video_path)
     os.remove("audio.wav")
-    
 
-cpy = os.listdir( sys.argv[1]).copy()
-for top_scene in cpy:
-    generate_subtitles(sys.argv[1] + "/" + top_scene)
+    return final_path
+    
+if __name__ == "__main__":
+    with open('config.json', 'r', encoding='utf-8') as file:
+        data = json.load(file)
+    cpy = os.listdir( sys.argv[1]).copy()
+    for top_scene in cpy:
+        new_video_path = generate_subtitles(sys.argv[1] + "/" + top_scene)
+        if data["autoUpload"] == "True":
+            title = generate_title("temp.srt")
+            upload_video(new_video_path, title,"Check out this exciting scene! More content coming soon.",  ["drama", "scenes", "shorts", "entertainment"], data["privacyStatus"])
+            os.remove("temp.srt")

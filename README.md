@@ -19,7 +19,7 @@ To set up this project locally, follow these steps:
 - Run `python3 shorts.py`
 
 ## In the Future:
-- Automatically post to YouTube
+- Make subtitles look better
 - Add support for differing resolutions
 - Face tracking crop
 

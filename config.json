@@ -1,11 +1,11 @@
 {
     "autoUpload": "True",
     "clientSecretPath": "client_secret_92211281326-hra7dthtde2t8ms3gjebqp7tpuoake9s.apps.googleusercontent.com.json",
-    "privacyStatus": "unlisted",
-    "videoFolder": "/home/loganh/Torrent/House MD/group2",
+    "privacyStatus": "public",
+    "videoFolder": "/home/loganh/Torrent/House MD/group4",
     "facePath": "drhouse.jpg",
-    "faceWeight": 5,
-    "topXClips": 2,
+    "faceWeight": 7,
+    "topXClips": 4,
     "emotionsScore": {
         "happy": 1,
         "sad": 3,

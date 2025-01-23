@@ -4,11 +4,15 @@ import os
 import sys
 import json
 import re
+import subprocess
 import whisper
 from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
 from moviepy.video.tools.subtitles import SubtitlesClip
 from transformers import pipeline
-from upload import upload_video
+from upload import upload_video, authenticate_youtube
+
+
+
 
 def extract_dialogue_phrases(subtitle_path):
     with open(subtitle_path, 'r', encoding='utf-8') as file:
@@ -85,25 +89,75 @@ def generate_subtitles(video_path, model_name="base", output_srt="temp.srt"):
 
 
 def format_subtitles(txt):
-    return TextClip(txt, font='Arial', fontsize=40, color='white', size=(405, None), align='center', method='caption')
+    # Create the outline by layering slightly larger black text behind the white text
+    outline_size = 2  # Adjust for thicker or thinner outlines
+
+    # Black outline
+    outline_clip = TextClip(
+        txt,
+        font='Roboto',
+        fontsize=40,
+        color='black',
+        size=(405, None),
+        align='center',
+        method='caption'
+    )
+
+    # Add multiple offsets to simulate an outline effect
+    offsets = [
+        (-outline_size, -outline_size), (outline_size, -outline_size),
+        (-outline_size, outline_size),  (outline_size, outline_size),
+        (0, -outline_size), (0, outline_size),
+        (-outline_size, 0), (outline_size, 0)
+    ]
+
+    outline_clips = [
+        outline_clip.set_position(pos) for pos in offsets
+    ]
+
+    # White text on top
+    text_clip = TextClip(
+        txt,
+        font='Roboto',
+        fontsize=25,
+        color='white',
+        size=(405, None),
+        align='center',
+        method='caption'
+    )
+
+    return CompositeVideoClip(outline_clips + [text_clip])
+
+def upscale_video_ffmpeg(input_path, output_path, scale_factor=2, algorithm="lanczos"):
+
+    command = [
+        'ffmpeg', '-y', '-i', input_path,
+        '-vf', f'scale=iw*{scale_factor}:ih*{scale_factor}:flags={algorithm}',
+        '-c:v', 'libx264', '-preset', 'slow', '-crf', '18',  
+        '-c:a', 'copy', 
+        output_path
+    ]
+    subprocess.run(command, check=True)
+
+
 
 
 def save_scenes_with_appended_subtitles(video, video_path):
     subtitles = SubtitlesClip("temp.srt", format_subtitles)
 
 
-    final_video = CompositeVideoClip([video, subtitles.set_position(('center', video.h - 150))])
+    final_video = CompositeVideoClip([video, subtitles.set_position(('center', video.h - 240))])
 
     
-    final_path = sys.argv[1] + "subtitled.mp4"
-
+    #final_path = sys.argv[1] + "/" + "subtitled.mp4"
+    final_path = video_path +  "subtitled.mp4"
     final_video.write_videofile(final_path, fps=video.fps)
-
-    
+    upscale_video_ffmpeg(final_path, final_path + "upscaled.mp4", scale_factor=2)
+    os.remove(final_path)
     os.remove(video_path)
     os.remove("audio.wav")
 
-    return final_path
+    return final_path +"upscaled.mp4"
     
 if __name__ == "__main__":
     with open('config.json', 'r', encoding='utf-8') as file:
@@ -113,5 +167,6 @@ if __name__ == "__main__":
         new_video_path = generate_subtitles(sys.argv[1] + "/" + top_scene)
         if data["autoUpload"] == "True":
             title = generate_title("temp.srt")
-            upload_video(new_video_path, title,"Check out this exciting scene! More content coming soon.",  ["drama", "scenes", "shorts", "entertainment"], data["privacyStatus"])
+            youtube = authenticate_youtube()
+            upload_video(new_video_path, title,"House doing his thang.",  ["drama", "scenes", "shorts", "entertainment"], data["privacyStatus"], youtube)
             os.remove("temp.srt")

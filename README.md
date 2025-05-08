@@ -1,5 +1,5 @@
 # Function
-This program attempts to turn an unedited full length movie/show into a series of edited postable YouTube shorts.
+This program turns an unedited full length movie/show into a series of edited postable YouTube shorts.
 
 ## Features
 - Subtitling 
